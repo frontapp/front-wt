@@ -1,0 +1,81 @@
+.editorconfig
+  s_5ce0e7c065d2ac::t_636721e0096b5f 1-12
+.github/CODEOWNERS
+  s_52edb4bfad966d::t_fca0073f8867f1 1
+.github/workflows/audit-signatures.yml
+  s_52edb4bfad966d::t_f36ae777d042e7 1-23
+.github/workflows/ci.yml
+  s_52edb4bfad966d::t_e738bb9e72786d 1-49
+.github/workflows/publish.yml
+  s_52edb4bfad966d::t_b599220d9adaa2 1-70
+.github/workflows/version-check.yml
+  s_52edb4bfad966d::t_c927c32b5bcebb 1-25
+.gitignore
+  s_5ce0e7c065d2ac::t_1bee4877e349d4 1-8
+.nvmrc
+  s_52edb4bfad966d::t_2553ae1a86ed6f 1
+.oxlintrc.json
+  s_73d4d05e14aa8c::t_a9e04ac3417c2d 1-22
+README.md
+  s_52edb4bfad966d::t_cd4cbf44190195 1-89
+install.sh
+  s_52edb4bfad966d::t_3307b957197ed8 1-57
+pnpm-lock.yaml
+  s_43104bfcdd35ca::t_ae52f639961100 1-389
+scripts/build.js
+  s_52edb4bfad966d::t_925178fb52c805 1-20
+scripts/smoke.js
+  s_52edb4bfad966d::t_e6ee74504bcc42 1-45
+src/wt.js
+  s_73d4d05e14aa8c::t_cb39eec32450e7 1-1309
+test/matching.test.js
+  s_73d4d05e14aa8c::t_1b87e99b46c90d 1-70
+test/shell.test.js
+  s_52edb4bfad966d::t_e9a9865d1b2463 1-39
+package.json
+  s_73d4d05e14aa8c::t_c845012a0fa041 1-32
+test/format.test.js
+  s_73d4d05e14aa8c::t_9ea252ab29b05b 1-49
+test/update.test.js
+  s_73d4d05e14aa8c::t_24f2762386e33b 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f3239f14cec4bf585f2c0eefa6388334180d486",
+  "prompts": {},
+  "sessions": {
+    "s_43104bfcdd35ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5663112a-fcd1-4b8e-8a65-b2b9cbadcc12",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Laurent Perrin <laurent.perrin@gmail.com>"
+    },
+    "s_52edb4bfad966d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c70cb72-8adf-459f-b038-ab0319812041",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Laurent Perrin <laurent.perrin@gmail.com>"
+    },
+    "s_5ce0e7c065d2ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5e66c99-cf38-41ea-a119-123bb09e6e16",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Laurent Perrin <laurent.perrin@gmail.com>"
+    },
+    "s_73d4d05e14aa8c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "502359de-851c-490a-b2bf-fab2d13c420e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Laurent Perrin <laurent.perrin@gmail.com>"
+    }
+  }
+}

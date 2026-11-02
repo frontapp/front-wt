@@ -1,0 +1,32 @@
+{
+  "name": "@frontapp/front-wt",
+  "version": "0.1.0",
+  "description": "Switch between the git worktrees of the current repo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/frontapp/front-wt.git"
+  },
+  "bin": {
+    "wt": "dist/wt"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "scripts": {
+    "build": "node scripts/build.js",
+    "lint": "oxlint",
+    "test": "node --test test/*.test.js",
+    "smoke": "node scripts/smoke.js",
+    "prepack": "pnpm build"
+  },
+  "devDependencies": {
+    "oxlint": "1.89.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "pnpm@12.15.0"
+}

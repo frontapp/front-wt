@@ -1,0 +1,70 @@
+name: Publish
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+  audit-signatures:
+    uses: ./.github/workflows/audit-signatures.yml
+  publish:
+    needs: [ci, audit-signatures]
+    runs-on: ubuntu-latest
+    permissions:
+      # write: the release, its tag and its asset.
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: '@frontapp'
+      - run: pnpm install --frozen-lockfile
+      # dist/wt, with the version from package.json: the package's bin and the release's asset.
+      - run: pnpm build
+      # A version already on the registry is skipped, so a run that failed after publishing can be re-run to finish
+      # the release.
+      - name: Publish to GitHub Packages
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if npm view "@frontapp/front-wt@$version" version >/dev/null 2>&1; then
+            echo "@frontapp/front-wt@$version is already published"
+          else
+            pnpm publish --no-git-checks
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The version's tag on the commit it was published from, and its release: the script as an asset (what the
+      # installer and `wt update` download, with no token, the repo being public) and GitHub's notes from the merged PRs.
+      - name: Tag and release
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if gh release view "v$version" >/dev/null 2>&1; then
+            echo "v$version is already released"
+            exit 0
+          fi
+          previous=$(gh release list --exclude-drafts --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName // empty')
+          {
+            echo "**Install or update:** \`curl -fsSL https://raw.githubusercontent.com/$GITHUB_REPOSITORY/main/install.sh | bash\`"
+            echo
+            echo "An installed wt updates itself within a day; \`wt update\` does it now."
+            echo
+            gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="v$version" -f target_commitish="$GITHUB_SHA" \
+              ${previous:+-f previous_tag_name="$previous"} --jq .body
+          } > "$RUNNER_TEMP/notes.md"
+          gh release create "v$version" --target "$GITHUB_SHA" --title "v$version" --notes-file "$RUNNER_TEMP/notes.md" dist/wt
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

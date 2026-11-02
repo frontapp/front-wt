@@ -40,6 +40,13 @@ check('--complete lists this checkout\'s worktrees', r.code === 0 && r.out.trim(
 const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'wt-smoke-'));
 r = run(['--complete'], { cwd: outside });
 check('--complete outside a repo fails with a reason', r.code === 1 && /not in a git repository/.test(r.err), r.err);
+
+// The updater checks its download with `node --check` under this name before moving it into place: the name must be
+// one Node accepts (it refuses extensions it doesn't know, such as `.tmp`).
+const staged = path.join(outside, `.wt-${process.pid}-update`);
+fs.copyFileSync(wt, staged);
+const checked = cp.spawnSync(process.execPath, ['--check', staged], { encoding: 'utf8' });
+check('node --check accepts the file under the updater\'s staging name', checked.status === 0, checked.stderr);
 fs.rmSync(outside, { recursive: true, force: true });
 
 console.log('smoke: all good');

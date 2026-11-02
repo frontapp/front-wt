@@ -1178,7 +1178,8 @@ async function download(version, file) {
   if (!text.startsWith('#!/usr/bin/env node') || !text.includes(`const VERSION = '${version}';`)) {
     throw new Error(`the download isn't wt ${version}`);
   }
-  const tmp = `${file}.${process.pid}.tmp`;
+  // No extension: `node --check` refuses one it doesn't know (`.tmp`).
+  const tmp = path.join(path.dirname(file), `.${path.basename(file)}-${process.pid}-update`);
   let mode = 0o755;
   try { mode = fs.statSync(file).mode & 0o777; } catch {}
   fs.writeFileSync(tmp, text, { mode });

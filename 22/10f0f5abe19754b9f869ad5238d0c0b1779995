@@ -1,0 +1,21 @@
+scripts/smoke.js
+  s_5ce0e7c065d2ac::t_8b01798da3de62 37,39-50
+README.md
+  s_5ce0e7c065d2ac::t_bb2418c4fd1b3f 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2210f0f5abe19754b9f869ad5238d0c0b1779995",
+  "prompts": {},
+  "sessions": {
+    "s_5ce0e7c065d2ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5e66c99-cf38-41ea-a119-123bb09e6e16",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Laurent Perrin <laurent.perrin@gmail.com>"
+    }
+  }
+}

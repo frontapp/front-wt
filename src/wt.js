@@ -41,6 +41,16 @@ const EDITOR_NAMES = {
   subl: 'Sublime Text', mate: 'TextMate', idea: 'IntelliJ IDEA', webstorm: 'WebStorm',
   vi: 'vi', vim: 'Vim', nvim: 'Neovim', emacs: 'Emacs', hx: 'Helix', helix: 'Helix',
 };
+// Coding agents that make worktrees to work in: where each keeps them, and the names of its processes, to tell the
+// worktree it's running in by their working directory. Claude Code also locks its worktree while it runs, naming its
+// pid. Claude Code's worktrees live in the repo, Codex's and Cursor's in the home directory.
+const AGENTS = {
+  claude: { name: 'Claude Code', procs: ['claude'], roots: (repo) => [path.join(repo, '.claude', 'worktrees')] },
+  codex: { name: 'Codex', procs: ['codex'], roots: () => [codexWorktreeRoot()] },
+  cursor: { name: 'Cursor', procs: ['cursor-agent'], roots: () => [path.join(os.homedir(), '.cursor', 'worktrees')] },
+};
+const CODEX_MARKER = 'codex-thread.json'; // in the git directory of each worktree Codex made
+
 const CACHE_DIR = path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'wt');
 const PR_CACHE = path.join(CACHE_DIR, 'prs.json');
 const UPDATE_STATE = path.join(CACHE_DIR, 'update.json');
@@ -90,6 +100,7 @@ function readWorktrees() {
   const items = raw.filter((w) => !('bare' in w)).map((w, i) => {
     const branch = w.branch ? w.branch.replace(/^refs\/heads\//, '') : null;
     const prefixLen = branch && branch.startsWith(CLAUDE_PREFIX) ? CLAUDE_PREFIX.length : 0;
+    const agent = i === 0 ? null : agentOf(w.path, raw[0].path, gitDirOf(w.path));
     const it = {
       path: w.path,
       sha: w.HEAD,
@@ -98,9 +109,11 @@ function readWorktrees() {
       key: branch ? branch.slice(prefixLen) : null,
       prefixLen,
       isMain: i === 0,
-      name: i === 0 ? '(main)' : path.basename(w.path),
+      // Codex names every worktree after the repo: the bucket it's in tells them apart.
+      name: i === 0 ? '(main)' : agent === 'codex' ? `codex/${path.basename(path.dirname(w.path))}` : path.basename(w.path),
       locked: 'locked' in w ? w.locked || 'no reason given' : null,
-      claude: 'locked' in w && /claude/.test(w.locked) && isAlive(w.locked),
+      agent, // the agent that made it
+      busy: 'locked' in w && /claude/.test(w.locked) && isAlive(w.locked) ? 'claude' : null, // the agent running in it
       order: i,
     };
     const p = realpath(w.path);
@@ -119,6 +132,99 @@ function isAlive(lockReason) {
   const m = /pid (\d+)/.exec(lockReason);
   if (!m) return true;
   try { process.kill(Number(m[1]), 0); return true; } catch (e) { return e.code === 'EPERM'; }
+}
+
+// Where a linked worktree's git directory is, from its `.git` file; null for the main worktree, whose `.git` is a directory.
+function gitDirOf(wtPath) {
+  const m = /^gitdir: (.+)$/m.exec(readText(path.join(wtPath, '.git')));
+  return m ? path.resolve(wtPath, m[1].trim()) : null;
+}
+
+// $CODEX_HOME/worktrees, unless Codex's config.toml sets desktop.git-worktree-root (under [desktop], or dotted).
+function codexWorktreeRoot(env = process.env) {
+  const home = env.CODEX_HOME || path.join(os.homedir(), '.codex');
+  const m = /^\s*(?:desktop\.)?git-worktree-root\s*=\s*"([^"]+)"/m.exec(readText(path.join(home, 'config.toml')));
+  return m ? m[1].replace(/^~(?=\/|$)/, os.homedir()) : path.join(home, 'worktrees');
+}
+
+// Which agent made a worktree: Codex marks its own in their git directory; otherwise the directory it's in says.
+function agentOf(wtPath, repoRoot, gitDir) {
+  if (gitDir && fs.existsSync(path.join(gitDir, CODEX_MARKER))) return 'codex';
+  const p = realpath(wtPath);
+  for (const [key, agent] of Object.entries(AGENTS)) {
+    if (agent.roots(repoRoot).some((root) => root && p.startsWith(realpath(root) + '/'))) return key;
+  }
+  return null;
+}
+
+// The deepest of `paths` holding `cwd`, as an index, or -1: a worktree can sit inside another, as Claude Code's do.
+function worktreeHolding(paths, cwd) {
+  let best = -1;
+  paths.forEach((p, i) => {
+    if ((cwd === p || cwd.startsWith(p + '/')) && (best < 0 || p.length > paths[best].length)) best = i;
+  });
+  return best;
+}
+
+// `ps -axo pid=,comm=` lines, as [pid, process name]: the name can be a full path.
+function parsePs(text) {
+  return text.split('\n').map((l) => /^\s*(\d+)\s+(.+?)\s*$/.exec(l)).filter(Boolean).map((m) => [m[1], path.basename(m[2])]);
+}
+
+// `lsof -F pn` output, as [pid, path]: a `p` line starts each process, `n` lines follow with its files.
+function parseLsof(text) {
+  const out = [];
+  let pid = null;
+  for (const line of text.split('\n')) {
+    if (line[0] === 'p') pid = line.slice(1);
+    else if (line[0] === 'n' && pid) out.push([pid, line.slice(1)]);
+  }
+  return out;
+}
+
+// Which worktree each coding agent is running in, from its processes' working directories: /proc on Linux, ps and
+// lsof on macOS. After the first render, like the statuses; Claude Code's lock already says so without it.
+function loadAgents(items, children, onUpdate) {
+  const byProc = new Map(Object.entries(AGENTS).flatMap(([key, a]) => a.procs.map((p) => [p, key])));
+  const paths = items.map((it) => realpath(it.path));
+  const mark = (found) => { // [[agent, cwd]]
+    let changed = false;
+    for (const [key, cwd] of found) {
+      const it = items[worktreeHolding(paths, realpath(cwd))];
+      if (it && it.busy !== key) { it.busy = key; changed = true; }
+    }
+    if (changed) onUpdate();
+  };
+
+  if (process.platform === 'linux') {
+    const found = [];
+    for (const pid of fs.readdirSync('/proc')) {
+      if (!/^\d+$/.test(pid)) continue;
+      const key = byProc.get(readText(`/proc/${pid}/comm`).trim());
+      if (!key) continue;
+      try { found.push([key, fs.readlinkSync(`/proc/${pid}/cwd`)]); } catch {} // another user's: not ours to see
+    }
+    return mark(found);
+  }
+  if (process.platform !== 'darwin') return;
+  const lsof = ['/usr/sbin/lsof', '/usr/bin/lsof'].find(isExecutable) ?? (onPath('lsof') ? 'lsof' : null);
+  if (!lsof) return;
+  // ps names the processes; lsof gives their working directories (its own names are the binaries', which can differ).
+  const collect = (cmd, args, cb) => {
+    const child = cp.spawn(cmd, args, { stdio: ['ignore', 'pipe', 'ignore'] });
+    let buf = '';
+    child.stdout.setEncoding('utf8').on('data', (d) => (buf += d));
+    child.on('error', () => {});
+    child.on('close', () => cb(buf));
+    children.push(child);
+  };
+  collect('ps', ['-axo', 'pid=,comm='], (out) => {
+    const agents = new Map(parsePs(out).filter(([, comm]) => byProc.has(comm)).map(([pid, comm]) => [pid, byProc.get(comm)]));
+    if (!agents.size) return;
+    collect(lsof, ['-a', '-d', 'cwd', '-p', [...agents.keys()].join(','), '-F', 'pn'], (out2) => {
+      mark(parseLsof(out2).map(([pid, cwd]) => [agents.get(pid), cwd]).filter(([key]) => key));
+    });
+  });
 }
 
 // The branch we compare against: origin's default branch, else the main worktree's branch.
@@ -280,6 +386,7 @@ function deletionRisks(it, root, base, prPending) {
   } else if (it.ahead === 0) risks.push(['✓', `merged into ${into}`, S.green]);
 
   if (it.locked && !/claude/.test(it.locked)) risks.push(['!', `it's locked: ${it.locked}`, S.yellow]);
+  if (it.agent && !it.busy) risks.push(['·', `made by ${AGENTS[it.agent].name}, which isn't running in it`, S.dim]);
   return risks;
 }
 
@@ -443,9 +550,9 @@ function columns(items, width, showPR) {
     ab: Math.max(6, ...items.map((it) => segsLen(aheadBehindSegs(it)))),
     pr: showPR ? Math.max(13, ...items.map((it) => segsLen(prSegs(it.pr)))) : 0, // fits '#12345 merged': no jump when PRs load
     age: 4,
-    claude: items.some((it) => it.claude || it.deleting) ? GAP.length + 10 : 0,
+    agent: items.some((it) => it.agent || it.busy || it.deleting) ? GAP.length + 10 : 0,
   };
-  const fixed = 4 + 4 * GAP.length + w.changes + w.ab + (showPR ? GAP.length + w.pr : 0) + w.age + w.claude;
+  const fixed = 4 + 4 * GAP.length + w.changes + w.ab + (showPR ? GAP.length + w.pr : 0) + w.age + w.agent;
   // Too wide: shrink the worktree column first, the branch leads.
   let over = w.branch + w.name - (width - fixed);
   if (over > 0) {
@@ -575,7 +682,8 @@ function pick(items, root, base, initialQuery, startNotice = null) {
       ...cell(age(it.date), w.age, S.dim),
     ];
     if (it.deleting) segs.push([GAP, ''], ['deleting…', S.red]);
-    else if (it.claude) segs.push([GAP, ''], ['◆ claude', S.magenta]);
+    else if (it.busy) segs.push([GAP, ''], [`◆ ${it.busy}`, S.magenta]); // an agent is running in it
+    else if (it.agent) segs.push([GAP, ''], [`◇ ${it.agent}`, S.dim]); // an agent made it
     const rest = width - segsLen(marks);
     return paint(marks, width) + (sel ? paint(segs.map(([t, st]) => [t, plain(st)]), rest, S.selected) : paint(segs, rest));
   }
@@ -673,6 +781,7 @@ function pick(items, root, base, initialQuery, startNotice = null) {
   render();
   const children = loadStatuses(items, render);
   if (prChild) children.push(prChild);
+  loadAgents(items, children, render);
   process.on('SIGWINCH', render);
   if (startNotice) notify(...startNotice);
 
@@ -736,7 +845,7 @@ function pick(items, root, base, initialQuery, startNotice = null) {
       !it.isMain && {
         key: 'd',
         label: 'Delete worktree…',
-        disabled: it.claude && 'Claude Code is running in it',
+        disabled: it.busy && `${AGENTS[it.busy].name} is running in it`,
         // The confirmation opens on "Cancel", so ⏎ ⏎ ⏎ can't delete
         run: (m) => (menu = { ...m, confirm: { risks: deletionRisks(it, root, base, prPending), cursor: 1 } }),
       },
@@ -1306,5 +1415,6 @@ else {
   module.exports = {
     VERSION, fuzzy, match, filter, exactMatch, keysOf, parseStatus, age, tilde, keys, cell, paint, columns,
     shellBlock, withBlock, rcFile, shellQuote, compareVersions, isNewer, releaseVersion,
+    AGENTS, agentOf, codexWorktreeRoot, gitDirOf, worktreeHolding, parsePs, parseLsof, loadAgents,
   };
 }

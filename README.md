@@ -23,12 +23,7 @@ Then open a new terminal (or `source ~/.zshrc`) and run `wt`.
 
 The installer downloads the [latest release](https://github.com/frontapp/front-wt/releases/latest) of `wt`, a single file with no dependencies, to `~/.local/bin/wt`, then runs `wt install --yes`, which adds a marked `# >>> wt >>>` block to your shell's startup file (`~/.zshrc`; `~/.bashrc`, or `~/.bash_profile` on macOS). The block defines the `wt` shell function and its tab completion: a program can't change the directory of the shell that runs it, so `wt` has to be a function that runs the picker and `cd`s into the worktree you pick. It calls the script by its full path, so `~/.local/bin` needn't be on your `PATH`. Optional: [`gh`](https://cli.github.com), signed in, for the PR column and opening things on GitHub.
 
-Other ways in:
-
-- **By hand.** Download [`wt`](https://github.com/frontapp/front-wt/releases/latest/download/wt) and run `node wt install` (for the shell in `$SHELL`; `node wt install bash zsh` names them). It lists what it will change and asks before doing anything. If you run the script directly before installing, it explains why it can't change your directory and offers to install.
-- **With npm**, from GitHub Packages, which needs a token with `read:packages` even for a public package: `npm install -g @frontapp/front-wt`, then `wt install`. npm then owns updates.
-
-**Updates.** Once a day, a launch of `wt` looks at the latest release in the background and, when it's newer, downloads it over `~/.local/bin/wt`; the next launch runs it and says so in the header. `wt update` does it now; `WT_NO_UPDATE=1` turns the background check off. A copy installed with npm or run from a checkout is left to npm or git, and the header says when a release is out.
+**Updates.** Once a day, a launch of `wt` looks at the latest release in the background and, when it's newer, downloads it over `~/.local/bin/wt`; the next launch runs it and says so in the header. `wt update` does it now; `WT_NO_UPDATE=1` turns the background check off.
 
 **Uninstall.** `wt uninstall` removes the shell block, the script and its cache (`~/.cache/wt`), after asking.
 

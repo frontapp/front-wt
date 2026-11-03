@@ -1,0 +1,21 @@
+README.md
+  s_a9c39d545640e0::t_68b3033309f01b 61
+src/wt.js
+  s_a9c39d545640e0::t_2620a175e8b6f4 923-928
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "edddb0fe0227197261632b4fa0fa89819841b4ba",
+  "prompts": {},
+  "sessions": {
+    "s_a9c39d545640e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2d48ffa7-e989-4948-9719-8eba4a17ffab",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Laurent Perrin <laurent.perrin@gmail.com>"
+    }
+  }
+}

@@ -920,6 +920,12 @@ function pick(items, root, base, initialQuery, startNotice = null) {
   // meanwhile and the picker stays usable. Detached, so quitting doesn't interrupt it.
   function remove(it) {
     it.deleting = true;
+    // Move on to the next worktree (else the previous one), so the row being deleted shows it isn't selected anymore.
+    if (results[cursor]?.it === it) {
+      const next = results.findIndex((r, j) => j > cursor && !r.it.deleting);
+      const prev = results.findLastIndex((r, j) => j < cursor && !r.it.deleting);
+      if (next >= 0 || prev >= 0) cursor = next >= 0 ? next : prev;
+    }
     const cmds = [fs.existsSync(it.path)
       ? ['worktree', 'remove', '--force', ...(it.locked ? ['--force'] : []), it.path]
       : ['worktree', 'prune']];

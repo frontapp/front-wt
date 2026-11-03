@@ -58,7 +58,7 @@ The actions menu (↑ ↓ and ⏎, or press the action's key; esc goes back). It
 | e | Open in `$EDITOR` (named in the menu, e.g. "Open in VS Code") |
 | d | Delete worktree… |
 
-**Delete** removes the worktree and deletes its local branch, after a confirmation menu (`y` Delete, `n` Cancel; it opens on Cancel, esc goes back) that says what you'd lose: uncommitted changes, commits that aren't pushed anywhere, and whether the branch is merged. Squash-merged branches count as merged when their PR is merged and its head is the branch tip. It runs in the background (big worktrees take a few seconds), and if you were in that worktree, `wt` takes you to the main one. It's not offered for the main worktree, and is blocked while a coding agent is running in the worktree.
+**Delete** removes the worktree and deletes its local branch, after a confirmation menu (`y` Delete, `n` Cancel; it opens on Cancel, esc goes back) that says what you'd lose: uncommitted changes, commits that aren't pushed anywhere, and whether the branch is merged. Squash-merged branches count as merged when their PR is merged and its head is the branch tip. It runs in the background (big worktrees take a few seconds): the selection moves on to the next worktree while the row says `deleting…`, and if you were in that worktree, `wt` takes you to the main one. It's not offered for the main worktree, and is blocked while a coding agent is running in the worktree.
 
 The filter supports readline editing: ⌃a ⌃e, ⌃b ⌃f, ⌥b ⌥f, ⌃w, ⌥d, ⌃k, ⌃u, ⌃y, ⌃t, ⌃d.
 

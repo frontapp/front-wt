@@ -2,7 +2,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const os = require('os');
-const { parseStatus, age, tilde, cell, paint, columns } = require('../src/wt.js');
+const { parseStatus, age, tilde, cell, paint, columns, visibleLen, rowsAbove } = require('../src/wt.js');
 
 test('parseStatus: modified and untracked counts from porcelain output', () => {
   assert.deepEqual(parseStatus(''), { changed: 0, untracked: 0 });
@@ -46,4 +46,17 @@ test('columns: the worktree column shrinks before the branch', () => {
   const narrow = columns(items, 80, false);
   assert.ok(narrow.name < narrow.branch);
   assert.ok(narrow.name >= 12);
+});
+
+test('visibleLen: the width of a painted line, without its escape codes', () => {
+  assert.equal(visibleLen(paint([['ab', '1'], ['cd', ''], ['ef', '2;36']], 80)), 6);
+  assert.equal(visibleLen(paint([['abc', '1']], 10, '7')), 10);
+});
+
+test('rowsAbove: the lines above the cursor, rewrapped to the new width', () => {
+  assert.equal(rowsAbove([79], 5, 80), 1); // unchanged
+  assert.equal(rowsAbove([79], 5, 120), 1); // wider: nothing rewraps
+  assert.equal(rowsAbove([79], 5, 40), 2); // the header now takes two rows
+  assert.equal(rowsAbove([0], 5, 40), 1); // an empty line still takes one
+  assert.equal(rowsAbove([79], 45, 40), 3); // the cursor's own line wrapped before it
 });

@@ -503,6 +503,15 @@ function prSegs(pr) {
 
 const segsLen = (segs) => segs.reduce((n, [t]) => n + t.length, 0);
 
+// The width a painted line takes on screen: its text without the escape codes.
+const visibleLen = (line) => line.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').length;
+
+// How many rows up the top of the picker is after the terminal became `cols` wide. Terminals rewrap their lines when
+// narrowed, so a line drawn on one row may now take several: `widths` are the lines drawn above the cursor's, `col`
+// the cursor's column in its own line.
+const rowsAbove = (widths, col, cols) =>
+  widths.reduce((n, len) => n + Math.max(1, Math.ceil(len / cols)), 0) + Math.floor(col / cols);
+
 // A fixed-width cell, truncated with '…'. Highlighted positions are styled per char.
 function cell(text, w, style = '', hl = null) {
   const cut = text.length > w;
@@ -580,10 +589,11 @@ function pick(items, root, base, initialQuery, startNotice = null) {
   const repo = path.basename(root);
   const baseLabel = base ? path.basename(base).toUpperCase() : '';
   const size = () => out.getWindowSize().map((n, i) => n || [80, 24][i]);
-  const termRows = size()[1];
-  const listH = Math.max(1, Math.min(items.length, MAX_ROWS, termRows - 8));
-  const H = 4 + listH + 3; // header, prompt, blank, column titles · rows · blank, subject, path
+  // The list's height: what fits under the header, prompt, blank and column titles, above the blank, subject and path
+  const fitList = () => Math.max(1, Math.min(items.length, MAX_ROWS, size()[1] - 8));
+  let listH = fitList();
   const PROMPT_ROW = 1;
+  let drawn = []; // the widths of the lines on screen, to find our top again after a resize
 
   let query = initialQuery;
   let caret = query.length; // text cursor position in the query
@@ -766,10 +776,19 @@ function pick(items, root, base, initialQuery, startNotice = null) {
     let s = '\x1b[?25l' + (row > 0 ? `\x1b[${row}A` : '') + '\r' + lines.map((l) => l + '\x1b[K').join('\r\n') + '\x1b[J';
     s += `\x1b[${lines.length - 1 - PROMPT_ROW}A\r\x1b[${3 + caret}C` + (menu ? '' : '\x1b[?25h');
     row = PROMPT_ROW;
+    drawn = lines.map(visibleLen);
     out.write(s);
   }
 
+  function resize() {
+    if (done) return;
+    row = rowsAbove(drawn.slice(0, PROMPT_ROW), 3 + caret, size()[0]);
+    listH = fitList();
+    render();
+  }
+
   setQuery(query);
+  const H = 4 + listH + 3;
   out.write('\n'.repeat(H - 1) + `\x1b[${H - 1}A`); // make room below the prompt, scrolling if needed
   const prChild = loadPRs(items, root, base, () => {
     prPending = false;
@@ -782,7 +801,7 @@ function pick(items, root, base, initialQuery, startNotice = null) {
   const children = loadStatuses(items, render);
   if (prChild) children.push(prChild);
   loadAgents(items, children, render);
-  process.on('SIGWINCH', render);
+  process.on('SIGWINCH', resize);
   if (startNotice) notify(...startNotice);
 
   // Close the picker; prints `it`'s path for the shell to cd into. `after` runs once the screen is clean.
@@ -1419,7 +1438,7 @@ if (require.main === module) main();
 else {
   // For the tests: the pure parts.
   module.exports = {
-    VERSION, fuzzy, match, filter, exactMatch, keysOf, parseStatus, age, tilde, keys, cell, paint, columns,
+    VERSION, fuzzy, match, filter, exactMatch, keysOf, parseStatus, age, tilde, keys, cell, paint, columns, visibleLen, rowsAbove,
     shellBlock, withBlock, rcFile, shellQuote, compareVersions, isNewer, releaseVersion,
     AGENTS, agentOf, codexWorktreeRoot, gitDirOf, worktreeHolding, parsePs, parseLsof, loadAgents,
   };

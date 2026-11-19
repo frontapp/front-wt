@@ -608,6 +608,7 @@ function pick(items, root, base, initialQuery, startNotice = null) {
   let menu = null; // { r, cursor, confirm }: the actions menu of one worktree; `confirm` is { risks, cursor } while
   // confirming a delete, a menu within the menu
   let prPending = false; // the PR request is in flight
+  let cwdGone = false; // the worktree the shell is in was deleted: leaving goes to the main one
   let showPR = items.some((it) => it.pr !== undefined);
 
   function setQuery(q) {
@@ -805,9 +806,12 @@ function pick(items, root, base, initialQuery, startNotice = null) {
   if (startNotice) notify(...startNotice);
 
   // Close the picker; prints `it`'s path for the shell to cd into. `after` runs once the screen is clean.
+  // Not while a deletion runs: its outcome would go unreported, and the shell could be left in a deleted directory.
   function finish(it, after) {
-    // Quitting while the worktree you're in is being deleted: go to the main one instead.
-    if (!it && !after && items.find((x) => x.current)?.deleting) it = items[0];
+    const deleting = items.find((x) => x.deleting);
+    if (deleting) return notify(`still deleting ${deleting.name}…`, S.red);
+    // The worktree you were in is gone: go to the main one instead.
+    if (!it && cwdGone) it = items[0];
     done = true;
     for (const c of children) c.kill();
     input.setRawMode(false);
@@ -931,12 +935,12 @@ function pick(items, root, base, initialQuery, startNotice = null) {
     finish(null, () => {
       const fd = fs.openSync('/dev/tty', 'r+');
       cp.spawnSync(cmd, [...args, it.path], { cwd: it.path, stdio: [fd, fd, fd] });
-      return 1;
+      return cwdGone ? 0 : 1; // 0 lets the shell cd out of the deleted worktree
     });
   }
 
   // Delete the worktree and its branch in the background (a big worktree takes seconds): the row says so
-  // meanwhile and the picker stays usable. Detached, so quitting doesn't interrupt it.
+  // meanwhile and the picker stays usable, though it can't be quit until the deletion is done.
   function remove(it) {
     it.deleting = true;
     // Move on to the next worktree (else the previous one), so the row being deleted shows it isn't selected anymore.
@@ -960,10 +964,15 @@ function pick(items, root, base, initialQuery, startNotice = null) {
         return notify(`couldn't delete ${it.name}: ${err.trim().split('\n').pop() || 'git failed'}`, S.red);
       }
       items.splice(items.indexOf(it), 1);
-      if (it.current) return finish(items[0]); // the shell was in it: go to the main worktree
       refilter();
+      if (it.current) {
+        // The shell is in it: stay open, and go to the main worktree when leaving.
+        cwdGone = true;
+        try { process.chdir(root); } catch {}
+      }
+      const gone = it.current ? ` (you were in it: leaving goes to ${items[0].label})` : '';
       if (code !== 0) notify(`deleted ${it.name}, but not its branch: ${err.trim().split('\n').pop()}`, S.yellow);
-      else notify(`deleted ${it.name}`, S.green);
+      else notify(`deleted ${it.name}${gone}`, S.green);
     });
   }
 

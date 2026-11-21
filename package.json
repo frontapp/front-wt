@@ -1,6 +1,6 @@
 {
   "name": "@frontapp/front-wt",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Switch between the git worktrees of the current repo",
   "repository": {
     "type": "git",

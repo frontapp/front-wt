@@ -1,0 +1,19 @@
+test/tty.test.js
+  s_e631a7a073cd47::t_1f0e7349d5e7fa 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3101351cd65873dd9a085530d5c11eab71557ab",
+  "prompts": {},
+  "sessions": {
+    "s_e631a7a073cd47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_e631a7a073cd47",
+        "model": "unknown"
+      },
+      "human_author": "Pierre Laurac <pierre@frontapp.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+src/wt.js
+  s_854c4fbe86c5d2::t_080c50e1ff131a 788-789
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f4fcba42fe0210970843a8bb66ce763435f8578c",
+  "prompts": {},
+  "sessions": {
+    "s_854c4fbe86c5d2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_854c4fbe86c5d2",
+        "model": "unknown"
+      },
+      "human_author": "Pierre Laurac <pierre@frontapp.com>"
+    }
+  }
+}

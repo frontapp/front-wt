@@ -785,7 +785,8 @@ function pick(items, root, base, initialQuery, startNotice = null) {
     if (done) return;
     // `out` is our own stream on /dev/tty, and getWindowSize() only returns the size it cached. Node refreshes that
     // cache on SIGWINCH for process.stdout and process.stderr, never for a stream we open ourselves: without this, the
-    // picker kept drawing at the size it started with.
+    // picker kept drawing at the size it started with. `_refreshSize` is Node's own (undocumented) method: no public one.
+    // oxlint-disable-next-line no-underscore-dangle
     out._refreshSize?.();
     row = rowsAbove(drawn.slice(0, PROMPT_ROW), 3 + caret, size()[0]);
     listH = fitList();

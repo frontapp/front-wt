@@ -783,6 +783,9 @@ function pick(items, root, base, initialQuery, startNotice = null) {
 
   function resize() {
     if (done) return;
+    // Node refreshes the cached size on SIGWINCH only for process.stdout/stderr, not for our /dev/tty stream.
+    // oxlint-disable-next-line no-underscore-dangle
+    out._refreshSize?.();
     row = rowsAbove(drawn.slice(0, PROMPT_ROW), 3 + caret, size()[0]);
     listH = fitList();
     render();

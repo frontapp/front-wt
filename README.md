@@ -36,6 +36,7 @@ wt            open the picker
 wt cal        open it pre-filtered, or jump straight there if only one worktree matches
 wt <TAB>      complete branch and worktree names
 wt update     install the latest release now
+wt --select   pick a worktree for a script: ⏎ prints its path
 ```
 
 | Key | Action |
@@ -59,6 +60,12 @@ The actions menu (↑ ↓ and ⏎, or press the action's key; esc goes back). It
 | d | Delete worktree… |
 
 **Delete** removes the worktree and deletes its local branch, after a confirmation menu (`y` Delete, `n` Cancel; it opens on Cancel, esc goes back) that says what you'd lose: uncommitted changes, commits that aren't pushed anywhere, and whether the branch is merged. Squash-merged branches count as merged when their PR is merged and its head is the branch tip. It runs in the background (big worktrees take a few seconds): the selection moves on to the next worktree while the row says `deleting…`, and `wt` can't be quit until it's done. If you were in that worktree, the picker stays open and takes you to the main one when you leave it. It's not offered for the main worktree, and is blocked while a coding agent is running in the worktree.
+
+**For scripts.** `wt --select [--hint <text>]` is the picker without the actions menu: ⏎ prints the worktree's path and exits 0, esc exits 1. `--hint` replaces `select` in the header's `⏎ select`.
+
+```sh
+dir=$(WT_SHELL=1 wt --select --hint 'link front-dev') || exit 1
+```
 
 The filter supports readline editing: ⌃a ⌃e, ⌃b ⌃f, ⌥b ⌥f, ⌃w, ⌥d, ⌃k, ⌃u, ⌃y, ⌃t, ⌃d.
 

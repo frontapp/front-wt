@@ -823,7 +823,8 @@ function pick(items, root, base, initialQuery, startNotice = null, select = null
     input.setRawMode(false);
     input.pause();
     let s = '\x1b[?25h' + (row > 0 ? `\x1b[${row}A` : '') + '\r\x1b[J';
-    if (it) s += paint([['→ ', S.dim], [it.label, S.bold], ['  ', ''], [tilde(it.path), S.blue]], size()[0] - 1) + '\n';
+    // --select leaves saying what was picked to its caller
+    if (it && !select) s += paint([['→ ', S.dim], [it.label, S.bold], ['  ', ''], [tilde(it.path), S.blue]], size()[0] - 1) + '\n';
     out.write(s, () => {
       if (it) fs.writeSync(1, it.path + '\n');
       process.exit(after ? after() : it ? 0 : 1);
@@ -1451,7 +1452,7 @@ function main() {
       return res.length === 1 ? res[0].it : null;
     })();
     if (hit && !(select && !fs.existsSync(hit.path))) { // a missing one can't be selected: open the picker on it
-      fs.writeSync(2, `\x1b[2m→\x1b[0m \x1b[1m${hit.label}\x1b[0m  \x1b[34m${tilde(hit.path)}\x1b[0m\n`);
+      if (!select) fs.writeSync(2, `\x1b[2m→\x1b[0m \x1b[1m${hit.label}\x1b[0m  \x1b[34m${tilde(hit.path)}\x1b[0m\n`);
       fs.writeSync(1, hit.path + '\n');
       return;
     }

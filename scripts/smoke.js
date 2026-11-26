@@ -51,7 +51,7 @@ r = run(['feature'], { cwd: repo, env: { WT_SHELL: 'zsh' } });
 check('a query naming one worktree prints its path', r.code === 0 && r.out.trim() === fs.realpathSync(path.join(outside, 'feature-wt')), r.err || r.out);
 
 r = run(['--select', '--hint', 'link front-dev', 'feature'], { cwd: repo, env: { WT_SHELL: '1' } });
-check('--select with a query naming one worktree prints its path', r.code === 0 && r.out.trim() === fs.realpathSync(path.join(outside, 'feature-wt')), r.err || r.out);
+check('--select with a query naming one worktree prints its path, and nothing on stderr', r.code === 0 && r.out.trim() === fs.realpathSync(path.join(outside, 'feature-wt')) && r.err === '', r.err || r.out);
 
 r = run(['--complete'], { cwd: outside });
 check('--complete outside a repo fails with a reason', r.code === 1 && /not in a git repository/.test(r.err), r.err);

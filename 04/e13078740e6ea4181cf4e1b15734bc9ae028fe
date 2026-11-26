@@ -1,0 +1,19 @@
+README.md
+  s_cffa67c99ebcde::t_d4409f4c5ab241 39,64,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "04e13078740e6ea4181cf4e1b15734bc9ae028fe",
+  "prompts": {},
+  "sessions": {
+    "s_cffa67c99ebcde": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5827096d-b61e-44ee-b369-9877f41b3f16",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Laurent Perrin <laurent.perrin@gmail.com>"
+    }
+  }
+}

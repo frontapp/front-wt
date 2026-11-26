@@ -5,6 +5,7 @@
 //   wt install [shell…]   set up the `wt` shell function in bash and/or zsh (asks before changing anything; --yes skips)
 //   wt uninstall          remove it
 //   wt update             install the latest release now (it also happens by itself, in the background)
+//   wt --select [--hint t] [query]  the picker for another program: ⏎ prints the path (no actions menu), esc exits 1
 //   wt --complete         print worktree names, for shell completion
 //   wt --version          print the version
 //
@@ -577,7 +578,9 @@ function columns(items, width, showPR) {
 // Picker
 
 // `startNotice` is [message, style] shown in the header once the picker is up: an update that landed, say.
-function pick(items, root, base, initialQuery, startNotice = null) {
+// `select` is set by `wt --select`, for another program to pick a worktree: ⏎ prints its path right away, with no
+// actions menu, and `select.hint` names what ⏎ does in the header.
+function pick(items, root, base, initialQuery, startNotice = null, select = null) {
   let input, out;
   try {
     input = new tty.ReadStream(fs.openSync('/dev/tty', 'r'));
@@ -750,7 +753,7 @@ function pick(items, root, base, initialQuery, startNotice = null) {
     if (done) return;
     const width = size()[0] - 1;
     const w = columns(items, width, showPR);
-    const hint = menu ? '↑↓ ⏎ run · esc back' : '⏎ actions';
+    const hint = menu ? '↑↓ ⏎ run · esc back' : select ? `⏎ ${select.hint} · esc quit` : '⏎ actions';
 
     const lines = [];
     lines.push(spread(
@@ -770,7 +773,7 @@ function pick(items, root, base, initialQuery, startNotice = null) {
     lines.push('');
     const it = menu ? menu.r.it : results[cursor]?.it;
     lines.push(it ? paint([['   └ ', S.dim], [it.subject ?? '', '']], width - 1) : '');
-    lines.push(it ? paint([[`     ${tilde(it.path)}`, S.dim], [it.current ? '  · you are here' : '', S.green]], width) : '');
+    lines.push(it ? paint([[`     ${tilde(it.path)}`, S.dim], [it.current ? `  · ${select ? 'current' : 'you are here'}` : '', S.green]], width) : '');
 
     // Overwrite each line in place (clearing only its tail) rather than blanking the area first: no flicker.
     // The menu can be taller than the list: clear what's left below when it closes.
@@ -1002,8 +1005,10 @@ function pick(items, root, base, initialQuery, startNotice = null) {
   function listKey(key) {
     const it = results[cursor]?.it;
     switch (key) {
-      case '\r': case '\n': // the actions menu, on "Go to worktree"
+      case '\r': case '\n': // the actions menu, on "Go to worktree"; with --select, pick it
         if (it?.deleting) notify(`${it.name} is being deleted`, S.red);
+        else if (it && select && !fs.existsSync(it.path)) notify(`${it.name} is missing: its directory is gone`, S.red);
+        else if (it && select) return finish(it);
         else if (it) menu = { r: results[cursor], cursor: 0, confirm: null };
         break;
       case '\x1b':
@@ -1402,6 +1407,8 @@ function updateNotice() {
 // ---------------------------------------------------------------------------
 
 const USAGE = `usage: wt [query]             pick a worktree of the current repo and cd into it
+       wt --select [--hint <text>] [query]
+                              pick one for another program: ⏎ prints its path, esc exits 1
        wt install [bash|zsh]  set up the wt shell function (asks first; --yes doesn't)
        wt uninstall           remove it
        wt update              install the latest release now
@@ -1425,13 +1432,25 @@ function main() {
   }
   checkForUpdateInBackground();
 
-  const query = args.join(' ').trim();
+  // --select [--hint <text>]: see pick(). Anything else is the query.
+  let selecting = false;
+  let hint = 'select';
+  const words = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--select') selecting = true;
+    else if (args[i] === '--hint' && i + 1 < args.length) hint = args[++i];
+    else if (args[i].startsWith('--hint=')) hint = args[i].slice('--hint='.length);
+    else words.push(args[i]);
+  }
+  const select = selecting ? { hint: hint || 'select' } : null;
+
+  const query = words.join(' ').trim();
   if (query) {
     const hit = exactMatch(items, query) ?? (() => {
       const res = filter(items, query);
       return res.length === 1 ? res[0].it : null;
     })();
-    if (hit) {
+    if (hit && !(select && !fs.existsSync(hit.path))) { // a missing one can't be selected: open the picker on it
       fs.writeSync(2, `\x1b[2m→\x1b[0m \x1b[1m${hit.label}\x1b[0m  \x1b[34m${tilde(hit.path)}\x1b[0m\n`);
       fs.writeSync(1, hit.path + '\n');
       return;
@@ -1443,7 +1462,7 @@ function main() {
   items.sort((a, b) => b.isMain - a.isMain || (b.date ?? 0) - (a.date ?? 0) || a.order - b.order);
   items.forEach((it, i) => (it.order = i));
   cachedPRs(items, root);
-  pick(items, root, base, query, updateNotice());
+  pick(items, root, base, query, updateNotice(), select);
 }
 
 if (require.main === module) main();

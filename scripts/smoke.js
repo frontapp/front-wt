@@ -33,6 +33,8 @@ check(`--version prints "wt ${version}" on stderr`, r.code === 0 && r.err === `w
 
 r = run(['--help']);
 check('--help prints the usage', r.code === 0 && r.err.startsWith('usage: wt') && r.err.includes(version), r.err);
+// front-cli's front-select detects --select support this way: an older wt would take it as a query.
+check('--help lists --select', r.err.includes('--select'), r.err);
 
 // A repo of its own, with a branch and a second worktree: CI checks this repo out detached, with nothing to complete.
 const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'wt-smoke-'));
@@ -47,6 +49,9 @@ check('--complete lists the branches and worktree names', r.code === 0 && r.out.
 
 r = run(['feature'], { cwd: repo, env: { WT_SHELL: 'zsh' } });
 check('a query naming one worktree prints its path', r.code === 0 && r.out.trim() === fs.realpathSync(path.join(outside, 'feature-wt')), r.err || r.out);
+
+r = run(['--select', '--hint', 'link front-dev', 'feature'], { cwd: repo, env: { WT_SHELL: '1' } });
+check('--select with a query naming one worktree prints its path', r.code === 0 && r.out.trim() === fs.realpathSync(path.join(outside, 'feature-wt')), r.err || r.out);
 
 r = run(['--complete'], { cwd: outside });
 check('--complete outside a repo fails with a reason', r.code === 1 && /not in a git repository/.test(r.err), r.err);

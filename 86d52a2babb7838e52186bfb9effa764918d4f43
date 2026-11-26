@@ -1,0 +1,23 @@
+.github/workflows/node-latest.yml
+  s_4065b8941dd3e6::t_38c23f5be183a9 1-28
+src/wt.js
+  s_4065b8941dd3e6::t_c1951f1b384bf1 786
+test/tty.test.js
+  s_4065b8941dd3e6::t_a1ad157117636b 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "86d52a2babb7838e52186bfb9effa764918d4f43",
+  "prompts": {},
+  "sessions": {
+    "s_4065b8941dd3e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_4065b8941dd3e6",
+        "model": "unknown"
+      },
+      "human_author": "Pierre Laurac <pierre@frontapp.com>"
+    }
+  }
+}
